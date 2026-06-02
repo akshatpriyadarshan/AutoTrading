@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoCrypto Trader — Setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #111827;
+    --bg3: #1a2235;
+    --border: rgba(255,255,255,0.08);
+    --border-active: rgba(99,179,237,0.5);
+    --text: #e2e8f0;
+    --muted: #718096;
+    --accent: #63b3ed;
+    --accent2: #48bb78;
+    --danger: #fc8181;
+    --warn: #f6ad55;
+    --card: #141c2e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── Grid lines bg ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(99,179,237,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99,179,237,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+  }
+
+  /* ── Header ── */
+  .header { margin-bottom: 3rem; }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+  .logo-icon {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, #63b3ed, #48bb78);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 18px; font-weight: 700;
+    color: #0a0e1a;
+  }
+  .logo-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+  .logo-text span { color: var(--accent); }
+  h1 {
+    font-size: 2rem; font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+  }
+  .subtitle { color: var(--muted); font-size: 0.95rem; }
+
+  /* ── Progress steps ── */
+  .steps {
+    display: flex; gap: 0; margin-bottom: 2.5rem;
+    border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+  }
+  .step {
+    flex: 1; padding: 0.75rem 1rem;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card);
+    border-right: 1px solid var(--border);
+    cursor: pointer; transition: background 0.15s;
+    font-size: 0.85rem; color: var(--muted);
+  }
+  .step:last-child { border-right: none; }
+  .step.active { background: var(--bg3); color: var(--text); }
+  .step.done { color: var(--accent2); }
+  .step-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-family: 'Space Mono', monospace;
+    flex-shrink: 0;
+  }
+  .step.done .step-num { background: var(--accent2); border-color: var(--accent2); color: #0a0e1a; }
+  .step.active .step-num { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Section cards ── */
+  .section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+    display: none;
+  }
+  .section.visible { display: block; }
+  .section-head {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+  }
+  .icon-blue  { background: rgba(99,179,237,0.12); color: var(--accent); }
+  .icon-green { background: rgba(72,187,120,0.12); color: var(--accent2); }
+  .icon-amber { background: rgba(246,173,85,0.12); color: var(--warn); }
+  .icon-red   { background: rgba(252,129,129,0.12); color: var(--danger); }
+  .icon-purple{ background: rgba(159,122,234,0.12); color: #9f7aea; }
+
+  .section-title {
+    font-weight: 500; font-size: 0.95rem;
+  }
+  .section-desc { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+  .section-body { padding: 1.5rem; }
+
+  /* ── Form fields ── */
+  .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .field-grid.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+  .field-grid.cols1 { grid-template-columns: 1fr; }
+  @media(max-width: 600px) {
+    .field-grid, .field-grid.cols3 { grid-template-columns: 1fr; }
+  }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field.full { grid-column: 1 / -1; }
+
+  label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  label .req { color: var(--danger); margin-left: 2px; }
+
+  input[type=text],
+  input[type=email],
+  input[type=number],
+  input[type=password] {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 0.6rem 0.85rem;
+    transition: border-color 0.15s;
+    outline: none;
+    width: 100%;
+  }
+  input[type=text]:focus,
+  input[type=email]:focus,
+  input[type=number]:focus,
+  input[type=password]:focus {
+    border-color: var(--border-active);
+  }
+  input.mono { font-family: 'Space Mono', monospace; font-size: 0.82rem; }
+
+  .toggle-row {
+    display: flex; align-items: center;
+    gap: 10px; margin-top: 4px;
+  }
+  .toggle {
+    width: 40px; height: 22px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    position: relative; transition: background 0.2s;
+  }
+  .toggle.on { background: var(--accent2); border-color: var(--accent2); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: transform 0.2s;
+  }
+  .toggle.on::after { transform: translateX(18px); }
+  .toggle-label { font-size: 0.85rem; color: var(--muted); }
+
+  .helper { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+  /* ── Risk meter ── */
+  .risk-meter {
+    background: var(--bg2);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 0.5rem;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .risk-bar-bg {
+    height: 6px; border-radius: 3px;
+    background: var(--border);
+    position: relative;
+  }
+  .risk-bar-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent2), var(--warn), var(--danger));
+    transition: width 0.2s;
+  }
+  .risk-labels {
+    display: flex; justify-content: space-between;
+    font-size: 0.7rem; color: var(--muted);
+  }
+
+  /* ── Fund preview ── */
+  .fund-preview {
+    background: var(--bg2);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    border: 1px solid var(--border);
+  }
+  .fp-item label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .fp-val { font-family: 'Space Mono', monospace; font-size: 1rem; font-weight: 700; margin-top: 4px; }
+  .fp-val.green { color: var(--accent2); }
+  .fp-val.blue  { color: var(--accent); }
+  .fp-val.amber { color: var(--warn); }
+
+  /* ── Webhook box ── */
+  .webhook-box {
+    background: var(--bg2);
+    border: 1px solid rgba(99,179,237,0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+  .webhook-url {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+    word-break: break-all;
+  }
+  .webhook-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 6px; }
+
+  /* ── Buttons ── */
+  .btn-row {
+    display: flex; gap: 12px;
+    justify-content: flex-end;
+    margin-top: 2rem;
+  }
+  .btn {
+    padding: 0.65rem 1.5rem;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.9rem; font-weight: 500;
+    cursor: pointer; transition: all 0.15s;
+    border: none; outline: none;
+  }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+  .btn-primary {
+    background: linear-gradient(135deg, #2b6cb0, #285e61);
+    color: #fff;
+  }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-success {
+    background: linear-gradient(135deg, #276749, #285e61);
+    color: #fff;
+  }
+  .btn-success:hover { opacity: 0.9; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 2rem; right: 2rem;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+    transform: translateY(20px);
+    opacity: 0; transition: all 0.3s;
+    z-index: 100; max-width: 360px;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.success { border-color: rgba(72,187,120,0.4); }
+  #toast.error   { border-color: rgba(252,129,129,0.4); }
+  .toast-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .toast.success .toast-dot { background: var(--accent2); }
+  .toast.error .toast-dot   { background: var(--danger); }
+
+  /* ── Complete state ── */
+  #complete-state { display: none; }
+  .complete-card {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: var(--card);
+    border: 1px solid rgba(72,187,120,0.2);
+    border-radius: 12px;
+  }
+  .check-circle {
+    width: 72px; height: 72px;
+    background: rgba(72,187,120,0.12);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-size: 2rem;
+  }
+  .complete-card h2 { font-size: 1.5rem; margin-bottom: 0.75rem; }
+  .complete-card p { color: var(--muted); margin-bottom: 1.5rem; line-height: 1.6; }
+  .next-steps {
+    background: var(--bg2);
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    text-align: left;
+    margin-top: 1.5rem;
+  }
+  .next-steps h4 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.75rem; }
+  .next-step-item {
+    display: flex; gap: 10px; align-items: flex-start;
+    margin-bottom: 0.6rem; font-size: 0.88rem;
+  }
+  .ns-num {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: rgba(99,179,237,0.15);
+    color: var(--accent);
+    font-size: 0.7rem; font-family: 'Space Mono', monospace;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">AC</div>
+      <div class="logo-text">Auto<span>Crypto</span> Trader</div>
+    </div>
+    <h1>Initial Setup</h1>
+    <p class="subtitle">One-time configuration. Takes ~5 minutes. Bot runs autonomously after this.</p>
+  </div>
+
+  <!-- Step progress -->
+  <div class="steps">
+    <div class="step active" id="tab-1" onclick="goStep(1)">
+      <div class="step-num">1</div> Exchange
+    </div>
+    <div class="step" id="tab-2" onclick="goStep(2)">
+      <div class="step-num">2</div> Alerts &amp; Email
+    </div>
+    <div class="step" id="tab-3" onclick="goStep(3)">
+      <div class="step-num">3</div> Trading Rules
+    </div>
+    <div class="step" id="tab-4" onclick="goStep(4)">
+      <div class="step-num">4</div> Review &amp; Launch
+    </div>
+  </div>
+
+  <!-- ────── STEP 1: Exchange ────── -->
+  <div class="section visible" id="step-1">
+    <div class="section-head">
+      <div class="section-icon icon-blue">🔑</div>
+      <div>
+        <div class="section-title">Delta Exchange API Credentials</div>
+        <div class="section-desc">Create API keys at <strong>delta.exchange → Account → API</strong></div>
+      </div>
+    </div>
+    <div class="section-body">
+      <div class="field-grid">
+        <div class="field full">
+          <label>API Key <span class="req">*</span></label>
+          <input type="text" id="delta_api_key" class="mono" placeholder="dex_xxxxxxxxxxxxxxxxxxxx" />
+        </div>
+        <div class="field full">
+          <label>API Secret <span class="req">*</span></label>
+          <input type="password" id="delta_api_secret" class="mono" placeholder="••••••••••••••••••••••••" />
+        </div>
+      </div>
+
+      <div class="toggle-row" style="margin-top:1.25rem">
+        <div class="toggle on" id="testnet-toggle" onclick="toggle('testnet-toggle','delta_testnet')"></div>
+        <input type="hidden" id="delta_testnet" value="true">
+        <span class="toggle-label">Use Testnet (recommended for first run)</span>
+      </div>
+
+      <div style="margin-top:1.5rem;">
+        <div class="section-head" style="padding:0 0 0.75rem; border:none;">
+          <div class="section-icon icon-amber">📡</div>
+          <div>
+            <div class="section-title">TradingView Webhook Secret</div>
+            <div class="section-desc">Used to verify signals come only from your TradingView alerts</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Webhook Secret <span class="req">*</span></label>
+          <input type="text" id="tradingview_webhook_secret" class="mono" placeholder="my-super-secret-token-123" />
+          <div class="helper">Pick any random string. You'll use this in TradingView Pine Script alerts.</div>
+        </div>
+        <div class="webhook-box" style="margin-top:1rem">
+          <div class="webhook-label">Your webhook endpoint (configure in TradingView):</div>
+          <div class="webhook-url" id="webhook-url-display">http://YOUR_SERVER_IP:3000/api/signals/webhook</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ────── STEP 2: Email ────── -->
+  <div class="section" id="step-2">
+    <div class="section-head">
+      <div class="section-icon icon-green">📬</div>
+      <div>
+        <div class="section-title">Email & Alerts</div>
+        <div class="section-desc">Daily reports + emergency alerts sent to your inbox</div>
+      </div>
+    </div>
+    <div class="section-body">
+      <div class="field-grid">
+        <div class="field full">
+          <label>Your Email Address <span class="req">*</span></label>
+          <input type="email" id="email_address" placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label>SMTP Host <span class="req">*</span></label>
+          <input type="text" id="smtp_host" placeholder="smtp.gmail.com" />
+        </div>
+        <div class="field">
+          <label>SMTP Port</label>
+          <input type="number" id="smtp_port" value="587" />
+        </div>
+        <div class="field">
+          <label>SMTP Username <span class="req">*</span></label>
+          <input type="text" id="smtp_user" placeholder="you@gmail.com" />
+        </div>
+        <div class="field">
+          <label>SMTP Password <span class="req">*</span></label>
+          <input type="password" id="smtp_password" placeholder="••••••••" />
+        </div>
+      </div>
+      <div class="toggle-row" style="margin-top:1rem">
+        <div class="toggle on" id="tls-toggle" onclick="toggle('tls-toggle','smtp_use_tls')"></div>
+        <input type="hidden" id="smtp_use_tls" value="true">
+        <span class="toggle-label">Use TLS / STARTTLS</span>
+      </div>
+      <div class="helper" style="margin-top:0.75rem">
+        Gmail users: enable App Passwords under Google Account → Security → 2FA → App passwords.
+      </div>
+    </div>
+  </div>
+
+  <!-- ────── STEP 3: Trading Rules ────── -->
+  <div class="section" id="step-3">
+    <div class="section-head">
+      <div class="section-icon icon-purple">⚙️</div>
+      <div>
+        <div class="section-title">Trading Parameters</div>
+        <div class="section-desc">Risk management, position sizing, fund protection rules</div>
+      </div>
+    </div>
+    <div class="section-body">
+      <div class="field-grid">
+        <div class="field">
+          <label>Starting Capital (USDT) <span class="req">*</span></label>
+          <input type="number" id="starting_capital" placeholder="1000" oninput="updateFundPreview()" />
+        </div>
+        <div class="field">
+          <label>Max Concurrent Trades</label>
+          <input type="number" id="max_open_trades" value="3" min="1" max="10" />
+        </div>
+        <div class="field full">
+          <label>Trading Pairs (comma-separated)</label>
+          <input type="text" id="trading_pairs" value="BTC/USDT,ETH/USDT" placeholder="BTC/USDT,ETH/USDT,SOL/USDT" />
+        </div>
+      </div>
+
+      <div style="margin-top:1.5rem">
+        <label>Risk Per Trade: <span id="risk-display" style="color:var(--accent);font-family:'Space Mono',monospace">2%</span></label>
+        <div class="risk-meter" style="margin-top:8px">
+          <input type="range" id="risk_per_trade_pct" min="0.5" max="10" step="0.5" value="2"
+            oninput="updateRisk(this.value)" style="width:100%;background:none;border:none;padding:0;margin:4px 0" />
+          <div class="risk-bar-bg">
+            <div class="risk-bar-fill" id="risk-bar" style="width:15%"></div>
+          </div>
+          <div class="risk-labels">
+            <span>Conservative (0.5%)</span>
+            <span>Aggressive (10%)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-grid" style="margin-top:1.5rem">
+        <div class="field">
+          <label>Stop-Loss Type</label>
+          <select id="stop_loss_type" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:0.9rem;padding:0.6rem 0.85rem;width:100%;outline:none">
+            <option value="fixed">Fixed %</option>
+            <option value="atr">ATR-based (dynamic)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Fixed Stop-Loss %</label>
+          <input type="number" id="stop_loss_fixed_pct" value="2" min="0.5" max="20" step="0.5" />
+        </div>
+        <div class="field">
+          <label>Max Daily Drawdown %</label>
+          <input type="number" id="max_drawdown_pct" value="15" min="5" max="50" />
+          <div class="helper">Bot pauses if fund drops this much in 24h</div>
+        </div>
+        <div class="field">
+          <label>Profit Lock Threshold %</label>
+          <input type="number" id="profit_lock_threshold" value="100" min="10" oninput="updateFundPreview()" />
+          <div class="helper">When fund reaches this % profit, lock portion</div>
+        </div>
+        <div class="field">
+          <label>Lock % on Milestone</label>
+          <input type="number" id="profit_lock_pct" value="25" min="5" max="50" oninput="updateFundPreview()" />
+          <div class="helper">% of total to lock when milestone hit</div>
+        </div>
+      </div>
+
+      <!-- Fund preview -->
+      <div class="fund-preview" id="fund-preview">
+        <div class="fp-item">
+          <label>Starting Fund</label>
+          <div class="fp-val blue" id="fp-start">—</div>
+        </div>
+        <div class="fp-item">
+          <label>At 100% Profit</label>
+          <div class="fp-val amber" id="fp-milestone">—</div>
+        </div>
+        <div class="fp-item">
+          <label>Locked Away</label>
+          <div class="fp-val green" id="fp-locked">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ────── STEP 4: Review & Submit ────── -->
+  <div class="section" id="step-4">
+    <div class="section-head">
+      <div class="section-icon icon-green">🚀</div>
+      <div>
+        <div class="section-title">Review &amp; Launch</div>
+        <div class="section-desc">Confirm settings before saving</div>
+      </div>
+    </div>
+    <div class="section-body">
+      <div id="review-content" style="font-size:0.88rem;line-height:1.9;color:var(--muted)">
+        Complete steps 1–3 to see summary here.
+      </div>
+      <div class="toggle-row" style="margin-top:1.5rem">
+        <div class="toggle" id="testnet2-toggle" onclick="mirrorToggle('testnet-toggle','testnet2-toggle','delta_testnet')"></div>
+        <span class="toggle-label">Testnet mode active</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nav buttons -->
+  <div class="btn-row" id="form-btns">
+    <button class="btn btn-ghost" id="btn-back" onclick="prevStep()" style="display:none">← Back</button>
+    <button class="btn btn-primary" id="btn-next" onclick="nextStep()">Next →</button>
+    <button class="btn btn-success" id="btn-submit" onclick="submitSetup()" style="display:none">
+      Save &amp; Complete Setup ✓
+    </button>
+  </div>
+
+  <!-- Complete state -->
+  <div id="complete-state">
+    <div class="complete-card">
+      <div class="check-circle">✓</div>
+      <h2>Setup Complete</h2>
+      <p>All credentials saved securely. Your bot is ready.<br>
+      Go to the dashboard to start trading.</p>
+      <div style="display:flex;gap:12px;justify-content:center">
+        <button class="btn btn-primary" onclick="window.location='/dashboard'">Open Dashboard →</button>
+        <button class="btn btn-ghost" onclick="window.location='/api/docs'">API Docs</button>
+      </div>
+      <div class="next-steps">
+        <h4>Next steps</h4>
+        <div class="next-step-item"><div class="ns-num">1</div> Add webhook URL to your TradingView Pine Script alerts</div>
+        <div class="next-step-item"><div class="ns-num">2</div> Verify Delta Exchange API permissions (read + trade)</div>
+        <div class="next-step-item"><div class="ns-num">3</div> Run a test signal on Testnet to confirm flow</div>
+        <div class="next-step-item"><div class="ns-num">4</div> Hit <strong>Start Bot</strong> on the dashboard</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .wrap -->
+
+<!-- Toast -->
+<div id="toast">
+  <div class="toast-dot" id="toast-dot"></div>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+let currentStep = 1;
+const TOTAL = 4;
+
+function goStep(n) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
+  document.getElementById('step-' + n).classList.add('visible');
+  document.querySelectorAll('.step').forEach((t,i) => {
+    t.classList.remove('active');
+    if (i+1 < n) t.classList.add('done'); else t.classList.remove('done');
+  });
+  document.getElementById('tab-' + n).classList.add('active');
+  currentStep = n;
+  document.getElementById('btn-back').style.display = n > 1 ? '' : 'none';
+  document.getElementById('btn-next').style.display = n < TOTAL ? '' : 'none';
+  document.getElementById('btn-submit').style.display = n === TOTAL ? '' : 'none';
+  if (n === TOTAL) buildReview();
+}
+
+function nextStep() {
+  if (!validateStep(currentStep)) return;
+  goStep(currentStep + 1);
+}
+function prevStep() { goStep(currentStep - 1); }
+
+function validateStep(n) {
+  const required = {
+    1: ['delta_api_key','delta_api_secret','tradingview_webhook_secret'],
+    2: ['email_address','smtp_host','smtp_user','smtp_password'],
+    3: ['starting_capital']
+  };
+  if (!required[n]) return true;
+  for (const id of required[n]) {
+    const el = document.getElementById(id);
+    if (el && !el.value.trim()) {
+      showToast('Please fill: ' + el.previousElementSibling.textContent, 'error');
+      el.focus();
+      return false;
+    }
+  }
+  return true;
+}
+
+function toggle(toggleId, inputId) {
+  const t = document.getElementById(toggleId);
+  const inp = document.getElementById(inputId);
+  t.classList.toggle('on');
+  inp.value = t.classList.contains('on') ? 'true' : 'false';
+}
+
+function mirrorToggle(srcId, mirrorId, inputId) {
+  const src = document.getElementById(srcId);
+  const mir = document.getElementById(mirrorId);
+  src.classList.toggle('on');
+  mir.classList.toggle('on');
+  document.getElementById(inputId).value = src.classList.contains('on') ? 'true' : 'false';
+}
+
+function updateRisk(v) {
+  document.getElementById('risk-display').textContent = v + '%';
+  document.getElementById('risk-bar').style.width = ((v / 10) * 100) + '%';
+}
+
+function updateFundPreview() {
+  const cap = parseFloat(document.getElementById('starting_capital').value) || 0;
+  const lockThr = parseFloat(document.getElementById('profit_lock_threshold').value) || 100;
+  const lockPct = parseFloat(document.getElementById('profit_lock_pct').value) || 25;
+  const milestone = cap * (1 + lockThr/100);
+  const locked = milestone * (lockPct/100);
+  document.getElementById('fp-start').textContent = cap > 0 ? '$' + cap.toLocaleString() : '—';
+  document.getElementById('fp-milestone').textContent = cap > 0 ? '$' + milestone.toFixed(0).toLocaleString() : '—';
+  document.getElementById('fp-locked').textContent = cap > 0 ? '$' + locked.toFixed(0).toLocaleString() : '—';
+}
+
+function buildReview() {
+  const pairs = document.getElementById('trading_pairs').value;
+  const risk = document.getElementById('risk_per_trade_pct').value;
+  const cap = document.getElementById('starting_capital').value || '—';
+  const slType = document.getElementById('stop_loss_type').value;
+  const sl = document.getElementById('stop_loss_fixed_pct').value;
+  const dd = document.getElementById('max_drawdown_pct').value;
+  const testnet = document.getElementById('delta_testnet').value === 'true';
+  const email = document.getElementById('email_address').value || '—';
+  document.getElementById('review-content').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem 2rem">
+      <div>Exchange</div><div style="color:var(--text)">Delta Exchange ${testnet ? '(Testnet ✓)' : '(Live)'}</div>
+      <div>API Key</div><div style="color:var(--text);font-family:'Space Mono',monospace;font-size:0.8rem">${document.getElementById('delta_api_key').value.slice(0,10)}••••</div>
+      <div>Alert Email</div><div style="color:var(--text)">${email}</div>
+      <div>Trading Pairs</div><div style="color:var(--text)">${pairs}</div>
+      <div>Capital</div><div style="color:var(--accent2);font-family:'Space Mono',monospace">$${parseFloat(cap).toLocaleString()} USDT</div>
+      <div>Risk / Trade</div><div style="color:var(--warn)">${risk}%</div>
+      <div>Stop-Loss</div><div style="color:var(--text)">${slType === 'atr' ? 'ATR-based' : sl + '% fixed'}</div>
+      <div>Max Drawdown</div><div style="color:var(--danger)">${dd}%</div>
+    </div>
+  `;
+}
+
+async function submitSetup() {
+  if (!validateStep(3)) { goStep(3); return; }
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const payload = {
+    delta_api_key: v('delta_api_key'),
+    delta_api_secret: v('delta_api_secret'),
+    delta_testnet: v('delta_testnet') === 'true',
+    tradingview_webhook_secret: v('tradingview_webhook_secret'),
+    email_address: v('email_address'),
+    smtp_host: v('smtp_host'),
+    smtp_port: parseInt(v('smtp_port')) || 587,
+    smtp_user: v('smtp_user'),
+    smtp_password: v('smtp_password'),
+    smtp_use_tls: v('smtp_use_tls') === 'true',
+    starting_capital: parseFloat(v('starting_capital')),
+    risk_per_trade_pct: parseFloat(v('risk_per_trade_pct')),
+    stop_loss_type: v('stop_loss_type'),
+    stop_loss_fixed_pct: parseFloat(v('stop_loss_fixed_pct')),
+    max_drawdown_pct: parseFloat(v('max_drawdown_pct')),
+    trading_pairs: v('trading_pairs'),
+    max_open_trades: parseInt(v('max_open_trades')),
+    profit_lock_threshold: parseFloat(v('profit_lock_threshold')),
+    profit_lock_pct: parseFloat(v('profit_lock_pct')),
+  };
+
+  try {
+    const res = await fetch('/api/setup/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      document.getElementById('form-btns').style.display = 'none';
+      document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+      document.querySelector('.steps').style.display = 'none';
+      document.getElementById('complete-state').style.display = 'block';
+      showToast('Setup saved successfully!', 'success');
+    } else {
+      throw new Error(data.detail || 'Setup failed');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Save & Complete Setup ✓';
+  }
+}
+
+function v(id) {
+  return document.getElementById(id)?.value ?? '';
+}
+
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.className = 'show ' + type;
+  setTimeout(() => t.className = '', 3000);
+}
+
+// Auto-detect server URL for webhook display
+const host = window.location.origin;
+document.getElementById('webhook-url-display').textContent = host + '/api/signals/webhook';
+
+// Init preview
+updateFundPreview();
+</script>
+</body>
+</html>

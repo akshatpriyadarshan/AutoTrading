@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    container_name: autocrypto_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./data:/app/data
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - autocrypto_net
+
+  db:
+    image: postgres:15-alpine
+    container_name: autocrypto_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-autocrypto}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_DB: ${DB_NAME:-autocrypto}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - autocrypto_net
+
+  frontend:
+    image: nginx:alpine
+    container_name: autocrypto_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - autocrypto_net
+
+volumes:
+  pg_data:
+
+networks:
+  autocrypto_net:
+    driver: bridge
