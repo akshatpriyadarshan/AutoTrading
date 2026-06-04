@@ -6,6 +6,7 @@ VSCode: press F5 with "Run Backend (local Python)" config.
 import os
 import sys
 
+
 # ── Paths ─────────────────────────────────────────────────────────────────────
 ROOT    = os.path.dirname(os.path.abspath(__file__))
 BACKEND = os.path.join(ROOT, "backend")
@@ -33,7 +34,12 @@ if os.path.exists(env_file):
 
 # Auto-generate a valid Fernet key if still not set
 if not os.environ.get("CONFIG_ENCRYPTION_KEY"):
-    from cryptography.fernet import Fernet
+    try:
+        from importlib import import_module
+        Fernet = import_module("cryptography.fernet").Fernet
+    except ImportError:
+        print("\n✗ Missing cryptography package. Install dependencies and rerun.")
+        sys.exit(1)
     key = Fernet.generate_key().decode()
     os.environ["CONFIG_ENCRYPTION_KEY"] = key
     with open(env_file, "a") as f:
@@ -76,7 +82,8 @@ if __name__ == "__main__":
     print(f"  Dashboard: open frontend/dashboard.html")
     print("─" * 52 + "\n")
 
-    import uvicorn
+    import uvicorn 
+    
     uvicorn.run(
         "main:app",
         host        = "0.0.0.0",
