@@ -1,78 +1,77 @@
 # AutoCrypto Trader
 
-Automated crypto trading system using **TradingView** for chart analysis and **Delta Exchange** for execution.
+Automated crypto trading — TradingView signals → Delta Exchange execution.
 
-## Architecture
-
-```
-TradingView Pine Script
-  └── Webhook (Buy/Sell signals)
-        └── Signal Receiver (FastAPI)
-              ├── Risk Manager (stop-loss, sizing)
-              ├── Fund Manager (25% lock rule)
-              └── Trade Executor (Delta Exchange API)
-                    └── Daily Reporter (email)
-```
-
-## Phase Build Status
-
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 1 | Foundation (scaffold, config UI, DB) | ✅ Complete |
-| 2 | Signal Engine (TradingView → webhook) | 🔜 Next |
-| 3 | Risk + Fund Logic | ⏳ Pending |
-| 4 | Trade Executor (Delta API) | ⏳ Pending |
-| 5 | Reporting + Alerts | ⏳ Pending |
-| 6 | Hardening | ⏳ Pending |
+---
 
 ## Quick Start
 
-```bash
-# 1. Clone and enter project
-cd autocrypto
+### Option A — VSCode (no Docker, easiest)
 
-# 2. Run quickstart (sets up .env, builds containers)
+```bash
+# 1. Run once to set up Python env
+chmod +x setup_local.sh
+./setup_local.sh
+
+# 2. Open in VSCode
+code .
+
+# 3. Press F5 → select "🐍 Backend Only (local Python)"
+# 4. Open frontend/index.html in browser to complete setup
+```
+
+### Option B — Docker (full production stack)
+
+```bash
 chmod +x scripts/quickstart.sh
 ./scripts/quickstart.sh
-
-# 3. Open setup UI
-open http://localhost:3000
+# → open http://localhost:3000
 ```
 
-## Manual Start
+---
 
-```bash
-# Copy and edit env
-cp .env.example .env
-# Edit .env with your values
+## Currency
 
-# Start
-docker compose up -d --build
+All amounts are in **INR (₹)**. The bot trades crypto pairs priced in USDT,
+but your starting capital, P&L reports, and fund displays are shown in INR.
 
-# Logs
-docker compose logs -f backend
-```
+---
 
-## Services
+## Setup Flow
 
-| Service | Port | Description |
-|---------|------|-------------|
-| frontend | 3000 | Setup UI + Dashboard |
-| backend | 8000 | FastAPI (signals, trades, reports) |
-| db | 5432 | PostgreSQL |
+1. Open **Setup UI** (`frontend/index.html` or `http://localhost:3000`)
+2. Fill in 4 steps: Exchange → Email → Trading Rules → Review
+3. Click **Save & Complete Setup**
+4. Open Dashboard → click **Start Bot**
+5. Add webhook URL to TradingView Pine Script alerts
 
-## Key Trading Rules
+---
 
-- **Risk per trade**: 0.5%–10% of available fund (configurable, default 2%)
-- **Stop-loss**: Fixed % or ATR-based (dynamic)
-- **Max daily drawdown**: Bot pauses if fund drops >15% in 24h
-- **25% lock rule**: When fund doubles (100% profit), lock 25% permanently; trade with remaining 75%
-- **Emergency alerts**: Email on API failure, auth issues, fund critically low
+## URLs
 
-## API Docs
+| Mode | Setup UI | Dashboard | API Docs |
+|------|----------|-----------|----------|
+| Local (VSCode) | `frontend/index.html` | `frontend/dashboard.html` | `http://localhost:8000/docs` |
+| Docker | `http://localhost:3000` | `http://localhost:3000/dashboard` | `http://localhost:8000/docs` |
 
-`http://localhost:8000/docs` — Swagger UI
+---
 
-## Environment Variables
+## Phase Status
 
-See `.env.example` for all required variables.
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 1 | Foundation — scaffold, config, DB | ✅ |
+| 2 | Signal Engine — TradingView webhook | ✅ |
+| 3 | Risk + Fund Manager | 🔜 |
+| 4 | Trade Executor (Delta API) | ⏳ |
+| 5 | Daily Reports + Alerts | ⏳ |
+| 6 | Hardening | ⏳ |
+
+---
+
+## Key Rules
+
+- Risk per trade: 0.5–10% of available fund (default 2%)
+- Stop-loss: Fixed % or ATR-based
+- Max daily drawdown: Bot pauses if fund drops >15%
+- **25% lock rule**: When fund doubles → lock 25% permanently → trade with 75%

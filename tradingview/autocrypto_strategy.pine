@@ -1,0 +1,151 @@
+//@version=5
+// ─────────────────────────────────────────────────────────────────────────────
+// AutoCrypto Trader — Signal Strategy
+// Sends BUY / SELL / CLOSE webhooks to your AutoCrypto backend.
+//
+// HOW TO USE:
+// 1. Open TradingView → Pine Script Editor → paste this script
+// 2. Add to chart on your preferred pair (e.g. BINANCE:BTCUSDT, 1H or 4H)
+// 3. Click "Alerts" → Create Alert → Condition: AutoCrypto Signal Strategy
+//    → Alert message: (leave blank — the script sets the message)
+//    → Webhook URL: http://YOUR_SERVER_IP:3000/api/signals/webhook
+// 4. Repeat for each pair you want to trade
+//
+// SIGNALS GENERATED:
+//   BUY  — EMA9 crosses above EMA21, RSI < 65, volume spike
+//   SELL — EMA9 crosses below EMA21, RSI > 35, volume spike
+//   CLOSE— Hard stop-loss breach (price crosses stop level)
+// ─────────────────────────────────────────────────────────────────────────────
+
+strategy(
+  title      = "AutoCrypto Signal Strategy",
+  shorttitle = "ACT",
+  overlay    = true,
+  default_qty_type  = strategy.percent_of_equity,
+  default_qty_value = 2,
+  commission_type   = strategy.commission.percent,
+  commission_value  = 0.1
+)
+
+// ── Inputs ────────────────────────────────────────────────────────────────────
+var string WEBHOOK_SECRET = input.string(
+  defval  = "your_webhook_secret_here",
+  title   = "Webhook Secret",
+  tooltip = "Must match tradingview_webhook_secret in your AutoCrypto setup"
+)
+
+ema_fast    = input.int(9,    title="EMA Fast",         minval=3,  maxval=50)
+ema_slow    = input.int(21,   title="EMA Slow",         minval=5,  maxval=200)
+rsi_len     = input.int(14,   title="RSI Length",       minval=5,  maxval=30)
+rsi_ob      = input.int(65,   title="RSI Overbought",   minval=55, maxval=80)
+rsi_os      = input.int(35,   title="RSI Oversold",     minval=20, maxval=45)
+atr_len     = input.int(14,   title="ATR Length",       minval=5,  maxval=30)
+vol_mult    = input.float(1.5, title="Volume Spike Multiplier", minval=1.0, maxval=5.0, step=0.1)
+use_vol_filter = input.bool(true, title="Require Volume Spike for Entry")
+
+// ── Indicators ────────────────────────────────────────────────────────────────
+ema9   = ta.ema(close, ema_fast)
+ema21  = ta.ema(close, ema_slow)
+rsi    = ta.rsi(close, rsi_len)
+atr    = ta.atr(atr_len)
+vol_ma = ta.sma(volume, 20)
+
+// EMA crossovers
+ema_cross_up   = ta.crossover(ema9, ema21)
+ema_cross_down = ta.crossunder(ema9, ema21)
+
+// Volume spike: current volume > multiplier * 20-bar avg
+vol_spike = volume > (vol_ma * vol_mult)
+
+// ── Entry Conditions ──────────────────────────────────────────────────────────
+buy_cond  = ema_cross_up   and rsi < rsi_ob and (not use_vol_filter or vol_spike)
+sell_cond = ema_cross_down and rsi > rsi_os and (not use_vol_filter or vol_spike)
+
+// ── Stop-Loss Levels (for reference / CLOSE alerts) ───────────────────────────
+// These mirror what the backend calculates; used here for visual reference
+// and for generating CLOSE alerts if price breaches them.
+long_sl  = strategy.position_avg_price * (1 - 0.02)   // 2% below entry
+short_sl = strategy.position_avg_price * (1 + 0.02)   // 2% above entry
+
+// ── Strategy Entries (for backtesting) ────────────────────────────────────────
+if buy_cond
+    strategy.entry("Long", strategy.long)
+    strategy.exit("Long SL", from_entry="Long", stop=long_sl)
+
+if sell_cond
+    strategy.close("Long", comment="EMA Cross Down")
+
+// ── Webhook Alert Messages ────────────────────────────────────────────────────
+// TradingView supports dynamic placeholders: {{close}}, {{time}}, etc.
+// Build JSON string for the webhook payload.
+
+buy_msg = '{"secret":"' + WEBHOOK_SECRET + '",' +
+          '"signal":"BUY",' +
+          '"pair":"' + syminfo.basecurrency + '/' + syminfo.currency + '",' +
+          '"price":' + str.tostring(close, "#.########") + ',' +
+          '"atr":'   + str.tostring(atr,   "#.########") + ',' +
+          '"timestamp":"{{timenow}}"}'
+
+sell_msg = '{"secret":"' + WEBHOOK_SECRET + '",' +
+           '"signal":"SELL",' +
+           '"pair":"' + syminfo.basecurrency + '/' + syminfo.currency + '",' +
+           '"price":' + str.tostring(close, "#.########") + ',' +
+           '"atr":'   + str.tostring(atr,   "#.########") + ',' +
+           '"timestamp":"{{timenow}}"}'
+
+close_msg = '{"secret":"' + WEBHOOK_SECRET + '",' +
+            '"signal":"CLOSE",' +
+            '"pair":"' + syminfo.basecurrency + '/' + syminfo.currency + '",' +
+            '"price":' + str.tostring(close, "#.########") + ',' +
+            '"atr":'   + str.tostring(atr,   "#.########") + ',' +
+            '"timestamp":"{{timenow}}"}'
+
+// ── Fire Alerts ───────────────────────────────────────────────────────────────
+if buy_cond
+    alert(buy_msg, alert.freq_once_per_bar_close)
+
+if sell_cond
+    alert(sell_msg, alert.freq_once_per_bar_close)
+
+// CLOSE alert: long stop-loss breach
+if strategy.position_size > 0 and close < long_sl
+    alert(close_msg, alert.freq_once_per_bar_close)
+
+// ── Visuals ───────────────────────────────────────────────────────────────────
+plot(ema9,  title="EMA 9",  color=color.new(color.blue,  0), linewidth=2)
+plot(ema21, title="EMA 21", color=color.new(color.orange, 0), linewidth=2)
+
+// Buy / Sell markers
+plotshape(
+  buy_cond,
+  title    = "BUY Signal",
+  style    = shape.triangleup,
+  location = location.belowbar,
+  color    = color.new(color.green, 0),
+  size     = size.small,
+  text     = "BUY"
+)
+
+plotshape(
+  sell_cond,
+  title    = "SELL Signal",
+  style    = shape.triangledown,
+  location = location.abovebar,
+  color    = color.new(color.red, 0),
+  size     = size.small,
+  text     = "SELL"
+)
+
+// Background: bull zone (ema9 > ema21) tinted green, bear zone red
+bgcolor(
+  ema9 > ema21
+    ? color.new(color.green, 95)
+    : color.new(color.red, 95),
+  title = "Trend Background"
+)
+
+// RSI panel
+rsi_plot = plot(rsi, title="RSI", display=display.pane)
+hline(rsi_ob, "Overbought", color=color.red,   linestyle=hline.style_dashed)
+hline(rsi_os, "Oversold",   color=color.green, linestyle=hline.style_dashed)
+hline(50,     "Midline",    color=color.gray,  linestyle=hline.style_dotted)

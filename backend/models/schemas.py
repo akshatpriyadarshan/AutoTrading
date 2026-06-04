@@ -1,16 +1,12 @@
 """
-Pydantic schemas for request/response validation
+Pydantic schemas — simplified, no EmailStr dependency
 """
 from datetime import datetime
-from decimal import Decimal
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr, field_validator, model_validator
-import re
+from pydantic import BaseModel, field_validator
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Setup / Config
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Setup ─────────────────────────────────────────────────────────────────────
 
 class SetupRequest(BaseModel):
     # Exchange
@@ -18,10 +14,10 @@ class SetupRequest(BaseModel):
     delta_api_secret: str
     delta_testnet: bool = True
 
-    # TradingView
-    tradingview_webhook_secret: str
+    # TradingView webhook (optional — only needed if using manual webhooks)
+    tradingview_webhook_secret: str = "not-used"
 
-    # Email
+    # Email — plain str, no EmailStr (avoids email-validator dependency)
     email_address: str
     smtp_host: str
     smtp_port: int = 587
@@ -29,22 +25,30 @@ class SetupRequest(BaseModel):
     smtp_password: str
     smtp_use_tls: bool = True
 
-    # Trading params
-    starting_capital: float
+    # Trading params — INR
+    starting_capital: float           # in INR
     risk_per_trade_pct: float = 2.0
-    stop_loss_type: str = "fixed"        # "fixed" | "atr"
+    stop_loss_type: str = "fixed"
     stop_loss_fixed_pct: float = 2.0
     max_drawdown_pct: float = 15.0
     trading_pairs: str = "BTC/USDT,ETH/USDT"
     max_open_trades: int = 3
     profit_lock_threshold: float = 100.0
     profit_lock_pct: float = 25.0
+    candle_interval: str = "15m"   # 1m / 5m / 15m / 1h / 4h
+
+    @field_validator("email_address")
+    @classmethod
+    def email_basic_check(cls, v):
+        if "@" not in v or "." not in v.split("@")[-1]:
+            raise ValueError("Please enter a valid email address")
+        return v.strip()
 
     @field_validator("risk_per_trade_pct")
     @classmethod
     def risk_range(cls, v):
-        if not 0.5 <= v <= 10:
-            raise ValueError("Risk per trade must be between 0.5% and 10%")
+        if not 0.1 <= v <= 20:
+            raise ValueError("Risk per trade must be between 0.1% and 20%")
         return v
 
     @field_validator("stop_loss_type")
@@ -68,12 +72,6 @@ class SetupResponse(BaseModel):
     webhook_url: Optional[str] = None
 
 
-class ConfigResponse(BaseModel):
-    key: str
-    value: Optional[str]
-    is_secret: bool
-
-
 class BotStatusResponse(BaseModel):
     active: bool
     setup_complete: bool
@@ -82,17 +80,15 @@ class BotStatusResponse(BaseModel):
     starting_capital: float
     risk_per_trade_pct: float
     max_open_trades: int
-    uptime_since: Optional[datetime]
+    candle_interval: str = "15m"
+    uptime_since: Optional[datetime] = None
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Signals
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Signals ───────────────────────────────────────────────────────────────────
 
 class WebhookSignal(BaseModel):
-    """Payload sent by TradingView Pine Script webhook."""
     secret: str
-    signal: str          # "BUY" | "SELL" | "CLOSE"
+    signal: str
     pair: str
     price: float
     atr: Optional[float] = None
@@ -114,14 +110,10 @@ class SignalResponse(BaseModel):
     price: float
     processed: bool
     received_at: datetime
-
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Trades
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Trades ────────────────────────────────────────────────────────────────────
 
 class TradeResponse(BaseModel):
     id: int
@@ -129,21 +121,17 @@ class TradeResponse(BaseModel):
     direction: str
     status: str
     quantity: float
-    entry_price: Optional[float]
-    exit_price: Optional[float]
-    stop_loss_price: Optional[float]
-    pnl: Optional[float]
-    pnl_pct: Optional[float]
+    entry_price: Optional[float] = None
+    exit_price: Optional[float] = None
+    stop_loss_price: Optional[float] = None
+    pnl: Optional[float] = None
+    pnl_pct: Optional[float] = None
     opened_at: datetime
-    closed_at: Optional[datetime]
-
-    class Config:
-        from_attributes = True
+    closed_at: Optional[datetime] = None
+    model_config = {"from_attributes": True}
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Fund
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Fund ──────────────────────────────────────────────────────────────────────
 
 class FundResponse(BaseModel):
     total_balance: float
@@ -156,14 +144,10 @@ class FundResponse(BaseModel):
     pnl_total_pct: float
     milestone_hit: bool
     snapshot_at: datetime
-
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Reports
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Reports ───────────────────────────────────────────────────────────────────
 
 class DailyReportResponse(BaseModel):
     report_date: datetime
@@ -176,14 +160,10 @@ class DailyReportResponse(BaseModel):
     pnl_day: float
     pnl_total: float
     email_sent: bool
-
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Alerts
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Alerts ────────────────────────────────────────────────────────────────────
 
 class AlertResponse(BaseModel):
     id: int
@@ -192,14 +172,10 @@ class AlertResponse(BaseModel):
     message: str
     resolved: bool
     created_at: datetime
-
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Health
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Health ────────────────────────────────────────────────────────────────────
 
 class HealthResponse(BaseModel):
     status: str

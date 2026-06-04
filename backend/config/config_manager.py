@@ -1,6 +1,6 @@
 """
 Config Manager
-Stores all user settings in DB (secrets encrypted at rest).
+Stores all user settings in DB. Secrets are Fernet-encrypted at rest.
 """
 import json
 import os
@@ -12,19 +12,32 @@ from loguru import logger
 
 from models.db_models import Config
 
-# Encryption key — set via env or auto-generated once
-_FERNET_KEY = os.getenv("CONFIG_ENCRYPTION_KEY", "")
 _fernet: Optional[Fernet] = None
 
 
 def _get_fernet() -> Fernet:
-    global _fernet, _FERNET_KEY
+    global _fernet
     if _fernet:
         return _fernet
-    if not _FERNET_KEY:
-        _FERNET_KEY = Fernet.generate_key().decode()
-        logger.warning("No CONFIG_ENCRYPTION_KEY set — generated one for this session. Set it in .env!")
-    _fernet = Fernet(_FERNET_KEY.encode() if isinstance(_FERNET_KEY, str) else _FERNET_KEY)
+
+    key = os.environ.get("CONFIG_ENCRYPTION_KEY", "")
+
+    # If key missing or invalid, generate one (dev fallback)
+    if not key:
+        key = Fernet.generate_key().decode()
+        os.environ["CONFIG_ENCRYPTION_KEY"] = key
+        logger.warning("No CONFIG_ENCRYPTION_KEY set — generated one for this session. Add it to .env!")
+
+    # Validate key is proper Fernet format before creating instance
+    try:
+        _fernet = Fernet(key.encode() if isinstance(key, str) else key)
+    except Exception:
+        # Key is set but invalid format — regenerate
+        logger.warning("CONFIG_ENCRYPTION_KEY was invalid — regenerating.")
+        key = Fernet.generate_key().decode()
+        os.environ["CONFIG_ENCRYPTION_KEY"] = key
+        _fernet = Fernet(key.encode())
+
     return _fernet
 
 
@@ -36,9 +49,7 @@ def decrypt(value: str) -> str:
     return _get_fernet().decrypt(value.encode()).decode()
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# CRUD helpers
-# ──────────────────────────────────────────────────────────────────────────────
+# ── CRUD ──────────────────────────────────────────────────────────────────────
 
 async def get_config(db: AsyncSession, key: str) -> Optional[str]:
     result = await db.execute(select(Config).where(Config.key == key))
@@ -70,57 +81,44 @@ async def set_config(db: AsyncSession, key: str, value: Any, is_secret: bool = F
 
 
 async def get_all_config(db: AsyncSession) -> dict:
-    """Return all config as dict. Secrets returned as '***'."""
+    """Return all config keys. Secret values shown as '***'."""
     result = await db.execute(select(Config))
     rows = result.scalars().all()
-    out = {}
-    for row in rows:
-        out[row.key] = "***" if row.is_secret else row.value
-    return out
+    return {row.key: "***" if row.is_secret else row.value for row in rows}
 
 
-async def bulk_set_config(db: AsyncSession, data: dict, secret_keys: list[str] = None):
+async def bulk_set_config(db: AsyncSession, data: dict, secret_keys: list = None):
     secret_keys = secret_keys or []
     for key, value in data.items():
         await set_config(db, key, value, is_secret=(key in secret_keys))
     await db.commit()
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Config keys reference
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Config key registry ───────────────────────────────────────────────────────
 
 CONFIG_KEYS = {
-    # Exchange
-    "delta_api_key":            {"secret": True,  "label": "Delta Exchange API Key"},
-    "delta_api_secret":         {"secret": True,  "label": "Delta Exchange API Secret"},
-    "delta_testnet":            {"secret": False, "label": "Use Testnet (true/false)"},
-
-    # TradingView
-    "tradingview_webhook_secret": {"secret": True, "label": "TradingView Webhook Secret"},
-
-    # Email
-    "email_address":            {"secret": False, "label": "Report / Alert Email"},
-    "smtp_host":                {"secret": False, "label": "SMTP Host"},
-    "smtp_port":                {"secret": False, "label": "SMTP Port"},
-    "smtp_user":                {"secret": True,  "label": "SMTP Username"},
-    "smtp_password":            {"secret": True,  "label": "SMTP Password"},
-    "smtp_use_tls":             {"secret": False, "label": "SMTP TLS (true/false)"},
-
-    # Trading params
-    "starting_capital":         {"secret": False, "label": "Starting Capital (USDT)"},
-    "risk_per_trade_pct":       {"secret": False, "label": "Risk Per Trade % (default: 2)"},
-    "stop_loss_type":           {"secret": False, "label": "Stop-Loss Type (fixed/atr)"},
-    "stop_loss_fixed_pct":      {"secret": False, "label": "Fixed Stop-Loss % (default: 2)"},
-    "max_drawdown_pct":         {"secret": False, "label": "Max Daily Drawdown % (default: 15)"},
-    "trading_pairs":            {"secret": False, "label": "Trading Pairs CSV (e.g. BTC/USDT,ETH/USDT)"},
-    "max_open_trades":          {"secret": False, "label": "Max Concurrent Open Trades (default: 3)"},
-    "profit_lock_threshold":    {"secret": False, "label": "Profit Lock Threshold % (default: 100)"},
-    "profit_lock_pct":          {"secret": False, "label": "Profit Lock % on Milestone (default: 25)"},
-
-    # System
-    "setup_complete":           {"secret": False, "label": "Setup Complete Flag"},
-    "bot_active":               {"secret": False, "label": "Bot Active (true/false)"},
+    "delta_api_key":              {"secret": True,  "label": "Delta Exchange API Key"},
+    "delta_api_secret":           {"secret": True,  "label": "Delta Exchange API Secret"},
+    "delta_testnet":              {"secret": False, "label": "Use Testnet"},
+    "tradingview_webhook_secret": {"secret": True,  "label": "TradingView Webhook Secret"},
+    "email_address":              {"secret": False, "label": "Report Email"},
+    "smtp_host":                  {"secret": False, "label": "SMTP Host"},
+    "smtp_port":                  {"secret": False, "label": "SMTP Port"},
+    "smtp_user":                  {"secret": True,  "label": "SMTP Username"},
+    "smtp_password":              {"secret": True,  "label": "SMTP Password"},
+    "smtp_use_tls":               {"secret": False, "label": "SMTP TLS"},
+    "starting_capital":           {"secret": False, "label": "Starting Capital (INR)"},
+    "risk_per_trade_pct":         {"secret": False, "label": "Risk Per Trade %"},
+    "stop_loss_type":             {"secret": False, "label": "Stop-Loss Type"},
+    "stop_loss_fixed_pct":        {"secret": False, "label": "Fixed Stop-Loss %"},
+    "max_drawdown_pct":           {"secret": False, "label": "Max Daily Drawdown %"},
+    "trading_pairs":              {"secret": False, "label": "Trading Pairs"},
+    "max_open_trades":            {"secret": False, "label": "Max Open Trades"},
+    "profit_lock_threshold":      {"secret": False, "label": "Profit Lock Threshold %"},
+    "profit_lock_pct":            {"secret": False, "label": "Profit Lock %"},
+    "setup_complete":             {"secret": False, "label": "Setup Complete"},
+    "bot_active":                 {"secret": False, "label": "Bot Active"},
+    "candle_interval":            {"secret": False, "label": "Candle Interval (1m/5m/15m/1h/4h)"},
 }
 
 SECRET_KEYS = [k for k, v in CONFIG_KEYS.items() if v["secret"]]

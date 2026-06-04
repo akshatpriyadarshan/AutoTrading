@@ -423,22 +423,30 @@
         <span class="toggle-label">Use Testnet (recommended for first run)</span>
       </div>
 
+      <input type="hidden" id="tradingview_webhook_secret" value="not-used" />
       <div style="margin-top:1.5rem;">
         <div class="section-head" style="padding:0 0 0.75rem; border:none;">
-          <div class="section-icon icon-amber">📡</div>
+          <div class="section-icon icon-green">⚙️</div>
           <div>
-            <div class="section-title">TradingView Webhook Secret</div>
-            <div class="section-desc">Used to verify signals come only from your TradingView alerts</div>
+            <div class="section-title">Signal Engine (Built-in — Free)</div>
+            <div class="section-desc">Analyses charts automatically. No TradingView subscription needed.</div>
           </div>
         </div>
         <div class="field">
-          <label>Webhook Secret <span class="req">*</span></label>
-          <input type="text" id="tradingview_webhook_secret" class="mono" placeholder="my-super-secret-token-123" />
-          <div class="helper">Pick any random string. You'll use this in TradingView Pine Script alerts.</div>
+          <label>Candle Interval</label>
+          <select id="candle_interval" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:0.9rem;padding:0.6rem 0.85rem;width:100%;outline:none">
+            <option value="5m">5 minutes — more signals, more noise</option>
+            <option value="15m" selected>15 minutes — recommended balance</option>
+            <option value="1h">1 hour — fewer signals, higher quality</option>
+            <option value="4h">4 hours — swing trading</option>
+          </select>
+          <div class="helper">How often the engine analyses charts. 15m is best for most users.</div>
         </div>
-        <div class="webhook-box" style="margin-top:1rem">
-          <div class="webhook-label">Your webhook endpoint (configure in TradingView):</div>
-          <div class="webhook-url" id="webhook-url-display">http://YOUR_SERVER_IP:3000/api/signals/webhook</div>
+        <div style="background:rgba(72,187,120,0.06);border:1px solid rgba(72,187,120,0.2);border-radius:8px;padding:1rem;margin-top:0.75rem;font-size:0.85rem;line-height:1.8;color:var(--muted)">
+          <strong style="color:var(--accent2)">✓ Signals powered by:</strong><br>
+          EMA 9/21 crossover &nbsp;·&nbsp; RSI(14) confirmation &nbsp;·&nbsp; Volume spike filter &nbsp;·&nbsp; ATR-based stop-loss<br>
+          <strong style="color:var(--accent2)">✓ Data source:</strong> Binance public API (free, no key required)<br>
+          <strong style="color:var(--accent2)">✓ Fallback:</strong> KuCoin public API
         </div>
       </div>
     </div>
@@ -457,7 +465,7 @@
       <div class="field-grid">
         <div class="field full">
           <label>Your Email Address <span class="req">*</span></label>
-          <input type="email" id="email_address" placeholder="you@example.com" />
+          <input type="text" id="email_address" placeholder="you@example.com" />
         </div>
         <div class="field">
           <label>SMTP Host <span class="req">*</span></label>
@@ -499,7 +507,7 @@
     <div class="section-body">
       <div class="field-grid">
         <div class="field">
-          <label>Starting Capital (USDT) <span class="req">*</span></label>
+          <label>Starting Capital (INR ₹) <span class="req">*</span></label>
           <input type="number" id="starting_capital" placeholder="1000" oninput="updateFundPreview()" />
         </div>
         <div class="field">
@@ -611,7 +619,7 @@
       <p>All credentials saved securely. Your bot is ready.<br>
       Go to the dashboard to start trading.</p>
       <div style="display:flex;gap:12px;justify-content:center">
-        <button class="btn btn-primary" onclick="window.location='/dashboard'">Open Dashboard →</button>
+        <button class="btn btn-primary" onclick="window.location=(window.location.protocol==='file:' ? 'dashboard.html' : '/dashboard')">Open Dashboard →</button>
         <button class="btn btn-ghost" onclick="window.location='/api/docs'">API Docs</button>
       </div>
       <div class="next-steps">
@@ -659,7 +667,7 @@ function prevStep() { goStep(currentStep - 1); }
 
 function validateStep(n) {
   const required = {
-    1: ['delta_api_key','delta_api_secret','tradingview_webhook_secret'],
+    1: ['delta_api_key','delta_api_secret'],
     2: ['email_address','smtp_host','smtp_user','smtp_password'],
     3: ['starting_capital']
   };
@@ -701,9 +709,9 @@ function updateFundPreview() {
   const lockPct = parseFloat(document.getElementById('profit_lock_pct').value) || 25;
   const milestone = cap * (1 + lockThr/100);
   const locked = milestone * (lockPct/100);
-  document.getElementById('fp-start').textContent = cap > 0 ? '$' + cap.toLocaleString() : '—';
-  document.getElementById('fp-milestone').textContent = cap > 0 ? '$' + milestone.toFixed(0).toLocaleString() : '—';
-  document.getElementById('fp-locked').textContent = cap > 0 ? '$' + locked.toFixed(0).toLocaleString() : '—';
+  document.getElementById('fp-start').textContent = cap > 0 ? '₹' + cap.toLocaleString() : '—';
+  document.getElementById('fp-milestone').textContent = cap > 0 ? '₹' + milestone.toFixed(0).toLocaleString() : '—';
+  document.getElementById('fp-locked').textContent = cap > 0 ? '₹' + locked.toFixed(0).toLocaleString() : '—';
 }
 
 function buildReview() {
@@ -721,10 +729,11 @@ function buildReview() {
       <div>API Key</div><div style="color:var(--text);font-family:'Space Mono',monospace;font-size:0.8rem">${document.getElementById('delta_api_key').value.slice(0,10)}••••</div>
       <div>Alert Email</div><div style="color:var(--text)">${email}</div>
       <div>Trading Pairs</div><div style="color:var(--text)">${pairs}</div>
-      <div>Capital</div><div style="color:var(--accent2);font-family:'Space Mono',monospace">$${parseFloat(cap).toLocaleString()} USDT</div>
+      <div>Capital</div><div style="color:var(--accent2);font-family:'Space Mono',monospace">₹${parseFloat(cap).toLocaleString()}</div>
       <div>Risk / Trade</div><div style="color:var(--warn)">${risk}%</div>
       <div>Stop-Loss</div><div style="color:var(--text)">${slType === 'atr' ? 'ATR-based' : sl + '% fixed'}</div>
       <div>Max Drawdown</div><div style="color:var(--danger)">${dd}%</div>
+      <div>Candle Interval</div><div style="color:var(--text)">${document.getElementById('candle_interval').options[document.getElementById('candle_interval').selectedIndex].text}</div>
     </div>
   `;
 }
@@ -755,10 +764,11 @@ async function submitSetup() {
     max_open_trades: parseInt(v('max_open_trades')),
     profit_lock_threshold: parseFloat(v('profit_lock_threshold')),
     profit_lock_pct: parseFloat(v('profit_lock_pct')),
+    candle_interval: v('candle_interval') || '15m',
   };
 
   try {
-    const res = await fetch('/api/setup/', {
+    const res = await fetch(API_BASE + '/api/setup/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -774,7 +784,11 @@ async function submitSetup() {
       throw new Error(data.detail || 'Setup failed');
     }
   } catch (err) {
-    showToast(err.message, 'error');
+    let msg = err.message;
+    if (msg.includes('fetch') || msg.includes('Load') || msg.includes('Failed')) {
+      msg = 'Cannot reach backend. Make sure run_local.py is running on port 8000.';
+    }
+    showToast(msg, 'error');
     btn.disabled = false;
     btn.textContent = 'Save & Complete Setup ✓';
   }
@@ -791,8 +805,13 @@ function showToast(msg, type='success') {
   setTimeout(() => t.className = '', 3000);
 }
 
-// Auto-detect server URL for webhook display
-const host = window.location.origin;
+// Auto-detect API base — works whether opened as file:// or via nginx
+const API_BASE = (window.location.protocol === 'file:')
+  ? 'http://localhost:8000'
+  : '';
+const host = (window.location.protocol === 'file:')
+  ? 'http://localhost:8000'
+  : window.location.origin;
 document.getElementById('webhook-url-display').textContent = host + '/api/signals/webhook';
 
 // Init preview
